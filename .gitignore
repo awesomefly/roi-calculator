@@ -1,0 +1,24 @@
+# Dependencies and package-manager caches
+node_modules/
+.pnpm-store/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Build and test outputs
+dist/
+coverage/
+test-results/
+playwright-report/
+
+# Local tooling and operating-system files
+.superpowers/
+.DS_Store
+*.log
+
+# Local environment variables
+.env
+.env.*
+!.env.example
