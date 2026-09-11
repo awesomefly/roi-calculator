@@ -1,9 +1,25 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import ModelCurvesChart from "./ModelCurvesChart";
 
 const predictions = Array.from({ length: 360 }, (_, index) => ({ day: index + 1, value: (index + 1) / 360 }));
 
 describe("model curve colors", () => {
+  it("lets the user hide and restore the multi-model ensemble curve", () => {
+    render(<ModelCurvesChart
+      title="多模型拟合曲线"
+      observed={[]}
+      series={[{ id: "historical_multiplier", label: "历史倍率批次综合曲线", predictions }]}
+      ensemble={predictions}
+    />);
+
+    const toggle = screen.getByRole("checkbox", { name: "多模型等权综合曲线" });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(toggle).toBeChecked();
+  });
+
   it("gives an aggregate model and each cohort curve a different visible color", () => {
     render(<ModelCurvesChart
       title="多模型拟合曲线"

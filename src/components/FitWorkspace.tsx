@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Cohort, InputMode, ModelResult } from "../domain/types";
-import { fitMultiCohortPackageSource, type AggregateModelResult, type MultiCohortFitResult } from "../forecast/multiCohortFit";
+import { aggregateDailyPredictions, fitMultiCohortPackageSource, type AggregateModelResult, type MultiCohortFitResult } from "../forecast/multiCohortFit";
 import { equalWeightModelIds } from "../forecast/modelEligibility";
 import { createCsvBlob, createLtvTemplate, createRoiRetentionTemplate, createRoiTemplate } from "../io/csv";
 import type { IncompatibleModelPackage, ModelPackageV4 } from "../io/savedCurves";
@@ -132,8 +132,26 @@ export default function FitWorkspace(props: {
   const [message, setMessage] = useState<string>();
   const [importOpen, setImportOpen] = useState(false);
   const [inputMessage, setInputMessage] = useState<string>();
+  const [guidanceOpen, setGuidanceOpen] = useState(false);
+  const guidanceId = useId();
+  const guidance = useRef<HTMLDivElement>(null);
   const importTrigger = useRef<HTMLButtonElement>(null);
   const inputSection = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!guidanceOpen) return undefined;
+    const closeOutside = (event: MouseEvent) => {
+      if (!guidance.current?.contains(event.target as Node)) setGuidanceOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setGuidanceOpen(false);
+    };
+    document.addEventListener("mousedown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [guidanceOpen]);
   const stale = !!run && run.signature !== currentSignature;
   const changeGlobalMode = (mode: InputMode) => {
     setInputMessage(undefined);
@@ -178,10 +196,30 @@ export default function FitWorkspace(props: {
   const series = chartMode === "aggregate"
     ? visibleModels.map((model) => ({ id: model.id, label: `${model.label}批次综合曲线`, predictions: model.predictions }))
     : visibleModels.flatMap((model) => [{ id: `${model.id}-aggregate`, label: `${model.label}批次综合曲线`, predictions: model.predictions }, ...model.cohortFits.filter((fit) => fit.status === "ok").map((fit) => ({ id: `${model.id}-${fit.cohortId}`, label: `${fit.cohortName}拟合曲线`, predictions: fit.predictions }))]);
+  const ensemble = useMemo(() => {
+    if (!run) return undefined;
+    const retentionMode = run.result.sources.every((source) => source.mode === "roi_retention");
+    const eligibleIds = new Set(equalWeightModelIds(run.result.models, retentionMode));
+    return aggregateDailyPredictions(run.result.models.filter((model) => eligibleIds.has(model.id)));
+  }, [run]);
 
   return <div className="fit-workspace">
     <section ref={inputSection} className="fit-input" aria-labelledby="fit-input-title">
-      <div className="section-heading"><div><h2 id="fit-input-title">历史批次数据</h2><p>输入一个或多个历史批次，所有批次校验通过后可联合拟合。</p></div><div className="input-panel__tools"><button ref={importTrigger} type="button" onClick={() => setImportOpen(true)}>导入 CSV</button><button type="button" onClick={() => props.downloadFile(createCsvBlob(createRoiTemplate()), "roi-import-template.csv")}>下载 ROI 模板</button><button type="button" onClick={() => props.downloadFile(createCsvBlob(createRoiRetentionTemplate()), "roi-retention-import-template.csv")}>下载 ROI + 留存率模板</button><button type="button" onClick={() => props.downloadFile(createCsvBlob(createLtvTemplate()), "ltv-cac-import-template.csv")}>下载 LTV + CAC 模板</button></div></div>
+      <div className="section-heading"><div>
+        <div className="fit-guidance" ref={guidance}>
+          <div className="fit-guidance__title">
+            <h2 id="fit-input-title">历史批次数据</h2>
+            <button type="button" className="model-help__trigger" aria-label="查看历史数据量建议" aria-expanded={guidanceOpen} aria-controls={guidanceId} onClick={() => setGuidanceOpen((current) => !current)}>?</button>
+          </div>
+          {guidanceOpen && <div id={guidanceId} className="model-help__panel fit-guidance__panel" role="region" aria-label="历史数据量建议">
+            <p><strong>ROI：</strong>建议至少 5 批，每批至少 6 条观测，尽量包含 D360。</p>
+            <p><strong>ROI + 留存率：</strong>建议至少 5 个成熟批次，合计至少 20 条有效观测；留存率至少覆盖 3 个不同观测日（如 D1、D7、D30）。若要启用单调样条模型，建议 30 批、100 条观测，并覆盖 4 个不同留存观测日。</p>
+            <p><strong>LTV + CAC：</strong>建议至少 5 批，每批至少 6 条观测；每条需同时填写 LTV 和 CAC。</p>
+            <p>以上为稳定拟合建议，不作为输入阻断条件。</p>
+          </div>}
+        </div>
+        <p>输入一个或多个历史批次，所有批次校验通过后可联合拟合。</p>
+      </div><div className="input-panel__tools"><button ref={importTrigger} type="button" onClick={() => setImportOpen(true)}>导入 CSV</button><button type="button" onClick={() => props.downloadFile(createCsvBlob(createRoiTemplate()), "roi-import-template.csv")}>下载 ROI 模板</button><button type="button" onClick={() => props.downloadFile(createCsvBlob(createRoiRetentionTemplate()), "roi-retention-import-template.csv")}>下载 ROI + 留存率模板</button><button type="button" onClick={() => props.downloadFile(createCsvBlob(createLtvTemplate()), "ltv-cac-import-template.csv")}>下载 LTV + CAC 模板</button></div></div>
       <fieldset className="fit-global-mode"><legend>输入模式</legend>
         <label><input type="radio" name="fit-global-mode" checked={globalMode === "roi" && !mixedModes} onChange={() => changeGlobalMode("roi")} />ROI</label>
         <label><input type="radio" name="fit-global-mode" checked={globalMode === "roi_retention" && !mixedModes} onChange={() => changeGlobalMode("roi_retention")} />ROI + 留存率</label>
@@ -211,7 +249,7 @@ export default function FitWorkspace(props: {
           : "单调样条模型未通过自动准入条件，不参与多模型等权综合曲线。"}</p>
         <p>留存率与长期 ROI 的统计关联不代表因果关系。</p>
       </aside>}
-      <ModelCurvesChart title="多模型拟合曲线" observed={observed} observedGroups={observedGroups} series={series} ensemble={run.result.retentionFit?.ensemblePredictions} />
+      <ModelCurvesChart title="多模型拟合曲线" observed={observed} observedGroups={observedGroups} series={series} ensemble={ensemble} />
       <section className="model-status-section" aria-labelledby="fit-model-status-title"><h2 id="fit-model-status-title">模型状态与拟合对比</h2><div className="model-status-grid">{run.result.models.map((model) => <ModelStatusCard key={model.id} model={model} onSelect={() => setChartMode(model.id)} />)}</div></section>
       <section className="package-save" aria-labelledby="package-save-title"><h2 id="package-save-title">保存完整模型包</h2><div className="package-save__form"><label>模型包名称<input value={name} onChange={(event) => setName(event.currentTarget.value)} /></label><button type="button" onClick={save} disabled={stale || run.result.validModelCount < 1 || !name.trim()}>保存模型包</button></div>{message && <p role="status">{message}</p>}</section>
     </section>}

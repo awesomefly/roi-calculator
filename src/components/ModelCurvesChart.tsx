@@ -47,6 +47,7 @@ export default function ModelCurvesChart(props: {
   target?: number;
 }): JSX.Element {
   const [visible, setVisible] = useState<string[]>(props.series.map((item) => item.id));
+  const [ensembleVisible, setEnsembleVisible] = useState(true);
   const seriesColors = useMemo(() => colorsForSeries(props.series), [props.series]);
   const seriesSignature = props.series.map((item) => item.id).join(",");
   useEffect(() => {
@@ -73,7 +74,13 @@ export default function ModelCurvesChart(props: {
     <section className="model-curves-chart" aria-labelledby="model-curves-chart-title">
       <div className="model-curves-chart__heading">
         <h2 id="model-curves-chart-title">{props.title}</h2>
-        <div className="model-curves-chart__toggles">{props.series.map((item) => (
+        <div className="model-curves-chart__toggles">
+          {props.ensemble && <label>
+            <input type="checkbox" checked={ensembleVisible} onChange={() => setEnsembleVisible((current) => !current)} />
+            <span className="model-curves-chart__color" style={{ backgroundColor: "#172554" }} aria-hidden="true" />
+            多模型等权综合曲线
+          </label>}
+          {props.series.map((item) => (
           <label key={item.id}>
             <input type="checkbox" checked={visible.includes(item.id)} onChange={() => toggle(item.id)} />
             <span
@@ -85,7 +92,8 @@ export default function ModelCurvesChart(props: {
             />
             {item.label}
           </label>
-        ))}</div>
+          ))}
+        </div>
       </div>
       <div className="model-curves-chart__canvas" data-testid="model-curves-chart">
         <ResponsiveContainer width="100%" height={360}>
@@ -95,11 +103,11 @@ export default function ModelCurvesChart(props: {
             <YAxis width={52} tickFormatter={(value) => Number(value).toFixed(2)} />
             <Tooltip labelFormatter={(day) => `D${day}`} formatter={(value) => typeof value === "number" ? value.toFixed(3) : value} />
             {props.target !== undefined && <ReferenceLine y={props.target} label={`目标 ${props.target.toFixed(3)}`} stroke="#dc2626" strokeDasharray="6 4" />}
-            {hasBand && <Area type="monotone" dataKey="lower" stackId="band" stroke="none" fill="transparent" />}
-            {hasBand && <Area type="monotone" dataKey="band" stackId="band" name="模型分歧范围" stroke="none" fill="#93c5fd" fillOpacity={0.28} />}
-            {props.ensemble && <Line type="monotone" dataKey="ensemble" name="多模型等权综合曲线" stroke="#172554" strokeWidth={3} dot={false} />}
+            {ensembleVisible && hasBand && <Area type="monotone" dataKey="lower" stackId="band" stroke="none" fill="transparent" />}
+            {ensembleVisible && hasBand && <Area type="monotone" dataKey="band" stackId="band" name="模型分歧范围" stroke="none" fill="#93c5fd" fillOpacity={0.28} />}
+            {ensembleVisible && props.ensemble && <Line type="monotone" dataKey="ensemble" name="多模型等权综合曲线" stroke="#172554" strokeWidth={2} dot={false} />}
             {props.series.filter((item) => visible.includes(item.id)).map((item) => (
-              <Line key={item.id} type="monotone" dataKey={`model_${item.id}`} name={item.label} stroke={seriesColors.get(item.id)} dot={false} strokeWidth={MODEL_IDS.has(item.id as ModelResult["id"]) ? 3 : 2} strokeDasharray={MODEL_IDS.has(item.id as ModelResult["id"]) && !props.ensemble ? undefined : "5 4"} />
+              <Line key={item.id} type="monotone" dataKey={`model_${item.id}`} name={item.label} stroke={seriesColors.get(item.id)} dot={false} strokeWidth={MODEL_IDS.has(item.id as ModelResult["id"]) ? 2 : 1.5} strokeDasharray={MODEL_IDS.has(item.id as ModelResult["id"]) && !props.ensemble ? undefined : "5 4"} />
             ))}
             {props.observedGroups?.map((group, index) => <Scatter key={group.id} dataKey={`observed_${group.id}`} name={`${group.label}真实观测`} fill={COHORT_COLORS[index % COHORT_COLORS.length]} />)}
             {!props.observedGroups && <Scatter dataKey="observed" name="真实观测" fill="#111827" />}

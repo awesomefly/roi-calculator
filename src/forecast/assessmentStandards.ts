@@ -6,6 +6,13 @@ export type AssessmentPackageMode = "roi" | "roi_retention" | "ltv_cac";
 export type AssessmentConfidence = "low" | "medium" | "high";
 export type JointBoundaryStrategy = "roi_first" | "balanced" | "retention_first";
 
+export const ASSESSMENT_SEARCH_BUDGET = {
+  coarseGridPoints: 4,
+  refinedGridPoints: 3,
+  optimizationStarts: 1,
+  optimizationIterations: 4,
+} as const;
+
 export interface StandardValue { recommended: number; baseline?: number; lower: number; upper: number; conservativeAdjustment: number }
 export interface JointBoundaryPoint extends AssessmentCandidate {
   strategy: JointBoundaryStrategy;
@@ -183,10 +190,11 @@ function optimizeCandidates(predictor: CompiledAssessmentPredictor, target: numb
   };
   const results: QualifiedCandidate[] = [];
   for (const strategy of ["roi_first", "balanced", "retention_first"] as const) {
-    const starts = [...seeds].sort((a, b) => loss(encode(a.candidate), strategy) - loss(encode(b.candidate), strategy)).slice(0, 2);
+    const starts = [...seeds].sort((a, b) => loss(encode(a.candidate), strategy) - loss(encode(b.candidate), strategy))
+      .slice(0, ASSESSMENT_SEARCH_BUDGET.optimizationStarts);
     for (const seed of starts) {
       const vector = encode(seed.candidate); const first = Array(4).fill(0); const second = Array(4).fill(0);
-      for (let iteration = 1; iteration <= 6; iteration += 1) {
+      for (let iteration = 1; iteration <= ASSESSMENT_SEARCH_BUDGET.optimizationIterations; iteration += 1) {
         const gradient = vector.map((_, index) => {
           const epsilon = .002; const plus = [...vector]; const minus = [...vector]; plus[index] += epsilon; minus[index] -= epsilon;
           return (loss(plus, strategy) - loss(minus, strategy)) / (2 * epsilon);
@@ -243,10 +251,10 @@ export function invertAssessmentStandards(input: { modelPackage: ModelPackageV4;
   const anchor: AssessmentCandidate = { roi1: clamp(roi1.recommended, ...ranges.roi1), retention1: median(samples.map((s) => s.nextDayRetention)), roi7: clamp(roi7.recommended, ...ranges.roi7), retention7: median(samples.map((s) => s.day7Retention)) };
   const predictor = compileAssessmentPredictor(input.modelPackage, input.targetDay);
   if (!predictor.modelIds.length) return { ...retentionBase, status: "unavailable", confidence, warnings: ["没有具备目标日回测误差的有效留存增强模型，无法正式反推。"] };
-  const coarse = qualifiedCandidates(predictor, input.targetRoi, ranges);
+  const coarse = qualifiedCandidates(predictor, input.targetRoi, ranges, ASSESSMENT_SEARCH_BUDGET.coarseGridPoints);
   const coarseBalanced = [...coarse].sort((left, right) => candidateScore(left.candidate, anchor, ranges) - candidateScore(right.candidate, anchor, ranges))[0];
   if (!coarseBalanced) return { ...retentionBase, status: "unavailable", confidence, warnings: [OUT_OF_RANGE] };
-  const refined = qualifiedCandidates(predictor, input.targetRoi, refine(ranges, coarseBalanced.candidate));
+  const refined = qualifiedCandidates(predictor, input.targetRoi, refine(ranges, coarseBalanced.candidate), ASSESSMENT_SEARCH_BUDGET.refinedGridPoints);
   const optimized = optimizeCandidates(predictor, input.targetRoi, ranges, anchor, [...coarse, ...refined]);
   const verified = discretelyRevalidate(predictor, input.targetRoi, [...coarse, ...refined, ...optimized]);
   const boundary = representativeBoundary(verified, anchor, ranges);

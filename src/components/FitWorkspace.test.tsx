@@ -34,6 +34,51 @@ function MultiHarness(): JSX.Element {
 }
 
 describe("fit workspace", () => {
+  it("explains the recommended batch and observation counts for every input mode", () => {
+    render(<Harness />);
+
+    const trigger = screen.getByRole("button", { name: "查看历史数据量建议" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("region", { name: "历史数据量建议" })).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+
+    const guidance = screen.getByRole("region", { name: "历史数据量建议" });
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(guidance).toHaveTextContent("ROI：建议至少 5 批，每批至少 6 条观测，尽量包含 D360。");
+    expect(guidance).toHaveTextContent("ROI + 留存率：建议至少 5 个成熟批次，合计至少 20 条有效观测；留存率至少覆盖 3 个不同观测日（如 D1、D7、D30）。");
+    expect(guidance).toHaveTextContent("若要启用单调样条模型，建议 30 批、100 条观测，并覆盖 4 个不同留存观测日。");
+    expect(guidance).toHaveTextContent("LTV + CAC：建议至少 5 批，每批至少 6 条观测；每条需同时填写 LTV 和 CAC。");
+
+    fireEvent.click(trigger);
+    expect(screen.queryByRole("region", { name: "历史数据量建议" })).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole("region", { name: "历史数据量建议" })).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("region", { name: "历史数据量建议" })).not.toBeInTheDocument();
+  });
+
+  it("shows the ensemble curve toggle after fitting in all three input modes", () => {
+    const roi = render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "开始拟合" }));
+    expect(screen.getByRole("checkbox", { name: "多模型等权综合曲线" })).toBeChecked();
+    roi.unmount();
+
+    const retention = render(<Harness />);
+    fireEvent.click(screen.getByRole("radio", { name: "ROI + 留存率" }));
+    fireEvent.click(screen.getByRole("button", { name: "开始拟合" }));
+    expect(screen.getByRole("checkbox", { name: "多模型等权综合曲线" })).toBeChecked();
+    retention.unmount();
+
+    render(<LtvHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "开始拟合" }));
+    expect(screen.getByRole("checkbox", { name: "多模型等权综合曲线" })).toBeChecked();
+  });
+
   it("accepts ROI + 留存率 as a third fitting mode with point retention", () => {
     render(<Harness />);
 

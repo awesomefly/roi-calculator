@@ -8,9 +8,9 @@ export default function Header({ activePage, onNavigate }: {
 }): JSX.Element {
   return (
     <nav className="app-navigation" aria-label="主导航">
-      <button type="button" aria-current={activePage === "fit" ? "page" : undefined} onClick={() => onNavigate("fit")}>预估曲线拟合</button>
-      <button type="button" aria-current={activePage === "estimate" ? "page" : undefined} onClick={() => onNavigate("estimate")}>ROI 预估</button>
-      <button type="button" aria-current={activePage === "standards" ? "page" : undefined} onClick={() => onNavigate("standards")}>考核标准反推</button>
+      <button type="button" aria-current={activePage === "fit" ? "page" : undefined} onClick={() => onNavigate("fit")}>1. 预估曲线拟合</button>
+      <button type="button" aria-current={activePage === "standards" ? "page" : undefined} onClick={() => onNavigate("standards")}>2. 考核标准制定</button>
+      <button type="button" aria-current={activePage === "estimate" ? "page" : undefined} onClick={() => onNavigate("estimate")}>3. ROI预估与判断</button>
     </nav>
   );
 }

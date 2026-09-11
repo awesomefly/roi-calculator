@@ -4,7 +4,7 @@ import type { Cohort } from "../domain/types";
 import type { ModelPackageV4 } from "../io/savedCurves";
 import { equalWeightModelIds } from "./modelEligibility";
 import { fitMultiCohortPackageSource } from "./multiCohortFit";
-import { invertAssessmentStandards } from "./assessmentStandards";
+import { ASSESSMENT_SEARCH_BUDGET, invertAssessmentStandards } from "./assessmentStandards";
 
 function modelPackage(cohorts: Cohort[]): ModelPackageV4 {
   const fit = fitMultiCohortPackageSource(cohorts);
@@ -19,6 +19,16 @@ function modelPackage(cohorts: Cohort[]): ModelPackageV4 {
 }
 
 describe("assessment standard inversion", () => {
+  it("caps the four-dimensional candidate search budget", () => {
+    const gridCandidates = ASSESSMENT_SEARCH_BUDGET.coarseGridPoints ** 4
+      + ASSESSMENT_SEARCH_BUDGET.refinedGridPoints ** 4;
+    const optimizationSteps = 3 * ASSESSMENT_SEARCH_BUDGET.optimizationStarts
+      * ASSESSMENT_SEARCH_BUDGET.optimizationIterations;
+
+    expect(gridCandidates).toBeLessThanOrEqual(337);
+    expect(optimizationSteps).toBeLessThanOrEqual(12);
+  });
+
   it("uses an ROI package only for ROI1 and ROI7 standards", () => {
     const cohorts = DEMO_COHORTS.filter((cohort) => cohort.mode === "roi" && cohort.observations.some((point) => point.day === 360));
     const result = invertAssessmentStandards({ modelPackage: modelPackage(cohorts), targetRoi: 1.37, targetDay: 360 });
@@ -42,6 +52,8 @@ describe("assessment standard inversion", () => {
     expect(result.roi7?.upper).toBeGreaterThanOrEqual(result.roi7?.recommended ?? 0);
     expect(result.jointBoundary).toHaveLength(3);
     expect(result.jointBoundary.every((point) => point.conservativeTargetRoi >= 1.37)).toBe(true);
+    expect(result.jointBoundary.every((point) => [point.roi1, point.roi7, point.retention1, point.retention7]
+      .every((value) => Number.isInteger(value * 1_000)))).toBe(true);
     expect(result.jointBoundary.map((point) => point.strategy)).toEqual(["roi_first", "balanced", "retention_first"]);
     const balanced = result.jointBoundary.find((point) => point.strategy === "balanced");
     expect(balanced).toMatchObject({

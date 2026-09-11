@@ -28,7 +28,13 @@ describe("two-workspace navigation", () => {
   it("uses a navigation-only shell without the legacy header or clear action", () => {
     const { container } = render(<App storage={memoryStorage()} />);
 
-    expect(screen.getByRole("navigation", { name: "主导航" })).toBeInTheDocument();
+    const navigation = screen.getByRole("navigation", { name: "主导航" });
+    expect(navigation).toBeInTheDocument();
+    expect(within(navigation).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "1. 预估曲线拟合",
+      "2. 考核标准制定",
+      "3. ROI预估与判断",
+    ]);
     expect(container.querySelector(".app-header")).toBeNull();
     expect(screen.queryByRole("button", { name: "清除本地数据" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "预估曲线拟合", level: 1 })).toBeInTheDocument();
@@ -112,7 +118,7 @@ describe("two-workspace navigation", () => {
     expect(screen.queryByText("综合预估结论")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("目标 ROI")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "ROI 预估" }));
+    fireEvent.click(screen.getByRole("button", { name: "3. ROI预估与判断" }));
     expect(screen.getByRole("heading", { name: "ROI 预估", level: 1 })).toBeInTheDocument();
   });
 
@@ -121,7 +127,7 @@ describe("two-workspace navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "开始拟合" }));
     fireEvent.change(screen.getByLabelText("模型包名称"), { target: { value: "国内渠道基准" } });
     fireEvent.click(screen.getByRole("button", { name: "保存模型包" }));
-    fireEvent.click(screen.getByRole("button", { name: "ROI 预估" }));
+    fireEvent.click(screen.getByRole("button", { name: "3. ROI预估与判断" }));
 
     expect(screen.getByLabelText("选择模型包")).toHaveDisplayValue(/国内渠道基准/);
     expect(screen.queryByText("综合预估结论")).not.toBeInTheDocument();
@@ -150,7 +156,7 @@ describe("two-workspace navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "开始拟合" }));
     fireEvent.change(screen.getByLabelText("模型包名称"), { target: { value: "导入测试包" } });
     fireEvent.click(screen.getByRole("button", { name: "保存模型包" }));
-    fireEvent.click(screen.getByRole("button", { name: "ROI 预估" }));
+    fireEvent.click(screen.getByRole("button", { name: "3. ROI预估与判断" }));
 
     fireEvent.click(screen.getByRole("button", { name: "导入 CSV" }));
     fireEvent.change(screen.getByLabelText("选择 CSV 文件"), {
@@ -167,7 +173,7 @@ describe("two-workspace navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "开始拟合" }));
     fireEvent.change(screen.getByLabelText("模型包名称"), { target: { value: "逐行 CAC 包" } });
     fireEvent.click(screen.getByRole("button", { name: "保存模型包" }));
-    fireEvent.click(screen.getByRole("button", { name: "ROI 预估" }));
+    fireEvent.click(screen.getByRole("button", { name: "3. ROI预估与判断" }));
     fireEvent.click(screen.getByRole("radio", { name: "LTV + CAC" }));
 
     const table = screen.getByRole("table", { name: "新批次观测数据" });
