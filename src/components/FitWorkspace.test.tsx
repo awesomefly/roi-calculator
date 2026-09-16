@@ -91,6 +91,25 @@ describe("fit workspace", () => {
     expect(screen.getByRole("heading", { name: "拟合结果" })).toBeInTheDocument();
   });
 
+  it("aligns ROI and retention inputs with their table columns", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByRole("radio", { name: "ROI + 留存率" }));
+
+    const table = screen.getByRole("table", { name: /的观测数据/u });
+    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "序号",
+      "天数",
+      "累计 ROI",
+      "对应留存率",
+      "操作",
+    ]);
+
+    const firstDataRow = within(table).getAllByRole("row")[1]!;
+    const cells = within(firstDataRow).getAllByRole("cell");
+    expect(within(cells[1]!).getByLabelText("D1 ROI")).toHaveValue("0.1");
+    expect(within(cells[2]!).getByLabelText("D1 对应留存率")).toHaveValue("");
+  });
+
   it("allows missing point retention but blocks an entered value above 100%", () => {
     render(<Harness />);
     fireEvent.click(screen.getByRole("radio", { name: "ROI + 留存率" }));

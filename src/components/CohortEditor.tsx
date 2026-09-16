@@ -155,14 +155,14 @@ export default function CohortEditor({ draft, sequence, errors, canRemove, onCha
                     <label><span>观测天数</span><input aria-label={`第 ${index + 1} 行观测天数`} inputMode="numeric" value={row.day} onChange={(event) => updateRow(row.id, { day: event.currentTarget.value })} aria-describedby={describedBy(errors[dayKey], dayKey)} /></label>
                     {errors[dayKey] && <p id={`${dayKey}-error`} role="alert">{errors[dayKey]}</p>}
                   </td>
-                  {draft.mode === "roi_retention" && <td>
-                    <label><span>D{dayLabel} 对应留存率</span><input inputMode="decimal" value={row.retention ?? ""} onChange={(event) => updateRow(row.id, { retention: event.currentTarget.value })} aria-describedby={describedBy(errors[retentionKey], retentionKey)} /></label>
-                    {errors[retentionKey] && <p id={`${retentionKey}-error`} role="alert">{errors[retentionKey]}</p>}
-                  </td>}
                   <td>
                     <label><span>D{dayLabel} {metricName}</span><input inputMode="decimal" value={row.value} onChange={(event) => updateRow(row.id, { value: event.currentTarget.value })} aria-describedby={describedBy(errors[valueKey], valueKey)} /></label>
                     {errors[valueKey] && <p id={`${valueKey}-error`} role="alert">{errors[valueKey]}</p>}
                   </td>
+                  {draft.mode === "roi_retention" && <td>
+                    <label><span>D{dayLabel} 对应留存率</span><input inputMode="decimal" value={row.retention ?? ""} onChange={(event) => updateRow(row.id, { retention: event.currentTarget.value })} aria-describedby={describedBy(errors[retentionKey], retentionKey)} /></label>
+                    {errors[retentionKey] && <p id={`${retentionKey}-error`} role="alert">{errors[retentionKey]}</p>}
+                  </td>}
                   {draft.mode === "ltv_cac" && <td>
                     <label><span>D{dayLabel} CAC</span><input aria-label={`第 ${index + 1} 行 CAC`} inputMode="decimal" value={row.cac} onChange={(event) => updateRow(row.id, { cac: event.currentTarget.value })} aria-describedby={describedBy(errors[cacKey] ?? rowError, errors[cacKey] ? cacKey : roiKey)} /></label>
                     {errors[cacKey] && <p id={`${cacKey}-error`} role="alert">{errors[cacKey]}</p>}
